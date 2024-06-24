@@ -6,12 +6,13 @@ import pandas as pd
 
 from tqdm import tqdm
 import numpy as np
-from transformers import TrainingArguments, DataCollatorForLanguageModeling, Trainer
-from config import ModelConfig, PTQwenConfig, PTPhiConfig, PTMinillama3Config
+from transformers import TrainingArguments
+from config import ModelConfig, DPOPhiConfig, DPOQwenConfig, DPOMinillama3Config
 from utils.functions import MyTrainerCallback
 from utils.utils import print_model_parameters
 from model.llm_model import PhiHandler, Minillama3Handler, QwenHandler
-from model.dataset import get_pt_dataset
+from model.dataset import get_dpo_dataset
+from trl import DataCollatorForCompletionOnlyLM, DPOTrainer
 
 torch.backends.cuda.enable_mem_efficient_sdp(False)
 torch.backends.cuda.enable_flash_sdp(False)
@@ -27,15 +28,15 @@ handler_dict = {
 }
 
 
-def pt_train() -> None:
+def dpo_train() -> None:
     if ModelConfig.mode == 'Qwen':
-        config = PTQwenConfig()
+        config = DPOQwenConfig()
     elif ModelConfig.mode == "Phi":
-        config = PTPhiConfig()
+        config = DPOPhiConfig()
     elif ModelConfig.mode == "Minillama3":
-        config = PTMinillama3Config()
+        config = DPOMinillama3Config()
     else:
-        raise TypeError("just support qwen/tokenizer_wiki/tokenizer_wiki!!!")
+        raise TypeError("just support qwen/Phi/Minillama3!!!")
 
     HandlerClass = handler_dict.get(ModelConfig.mode)
     handler = HandlerClass(config)
@@ -44,14 +45,12 @@ def pt_train() -> None:
     tokenizer = handler.load_tokenizer()
 
     # step 2. 初始化模型
-    model = handler.get_model(tokenizer)
-    print_model_parameters(model)
+    model_train, model_ref = handler.get_dpo_model()
+    print_model_parameters(model_train)
 
     # step 3. Load dataset
-    train_dataset = get_pt_dataset(file=config.train_file,
-                                   tokenizer=tokenizer, max_seq_len=config.max_seq_len)
-    eval_dataset = get_pt_dataset(file=config.validation_file,
-                                  tokenizer=tokenizer, max_seq_len=config.max_seq_len)
+    train_dataset = get_dpo_dataset(file=config.train_file)
+    eval_dataset = get_dpo_dataset(file=config.validation_file)
 
     # step 4. Define the training argument
     training_args = TrainingArguments(
@@ -87,23 +86,27 @@ def pt_train() -> None:
         eval_steps=getattr(config, "eval_steps", 2000),
         report_to=config.report_to,
 
+        group_by_length=getattr(config, "group_by_length", False),
         ddp_find_unused_parameters=getattr(config, "ddp_find_unused_parameters", False),
         seed=config.seed,
     )
 
     # step 5.init collator
-    collator = DataCollatorForLanguageModeling(tokenizer, mlm=False)
     empty_cuda_cahce = MyTrainerCallback()
 
     # step 6. Define the trainer
-    trainer = Trainer(
-        model=model,
+    trainer = DPOTrainer(
+        model=model_train,
+        ref_model=model_ref,
         args=training_args,
+        beta=getattr(config, "beta", 0.1),
         train_dataset=train_dataset,
         eval_dataset=eval_dataset,
         tokenizer=tokenizer,
-        data_collator=collator,
         callbacks=[empty_cuda_cahce],
+        max_length=config.max_seq_len * 2 + 16,  # 官方文档中也是max_prompt_length的2倍
+        max_prompt_length=config.max_seq_len,
+        max_target_length=config.max_seq_len
     )
 
     # step 7. train
@@ -124,6 +127,6 @@ def pt_train() -> None:
 
 
 if __name__ == "__main__":
-    pt_train()
+    dpo_train()
 
-# sh train.sh pt.py
+# sh train.sh sft.py

@@ -24,10 +24,10 @@ def train_my_huggingface_wiki_tokenizer(cropus_file: str, max_train_line: int = 
     训练tokenizer with huggingface，至少需要32G内存，运行大概需要半个小时。
     '''
 
-    tokenizer_slow_save_path = PROJECT_ROOT + '/model_save/hf_tokenizer_slow/hf_bpe_tokenizer.josn'
-    tokenizer_fast_save_path = PROJECT_ROOT + '/model_save/hf_tokenizer'
+    tokenizer_slow_save_path = PROJECT_ROOT + '/weights/hf_tokenizer_slow/hf_bpe_tokenizer.josn'
+    tokenizer_fast_save_path = PROJECT_ROOT + '/weights/hf_tokenizer'
 
-    check_dir_exits(PROJECT_ROOT + '/model_save/hf_tokenizer_slow')
+    check_dir_exits(tokenizer_slow_save_path)
     check_dir_exits(tokenizer_fast_save_path)
 
     def get_training_corpus(buffer_size: int = 1000, chunk_len: int = 2048) -> list:
@@ -145,8 +145,8 @@ def train_my_BPE_tokenizer() -> None:
 
 
 if __name__ == '__main__':
-    PROJECT_ROOT = "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/data/"
-    cropus_file = PROJECT_ROOT + 'wiki.simple.txt'
+    PROJECT_ROOT = "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/tokenizer_wiki/"
+    cropus_file = PROJECT_ROOT + 'data/wiki.simple.txt'
 
     train_my_huggingface_wiki_tokenizer(cropus_file=cropus_file,
                                         token_type='char')  # token_type must be 'char' or 'byte'

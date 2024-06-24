@@ -31,5 +31,5 @@ for json_file in json_files:
 output_data = {'text': stories}
 
 # 将字典写入到jsonl文件中
-with open("/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/TinyStoriesZh/TinyStoriesZh-GPT4-train.jsonl", 'w', encoding='utf-8') as f:
+with open("/home/image_team/image_team_docker_home/lgd/e_commerce_llm/tokenizer_wiki/TinyStoriesZh/TinyStoriesZh-GPT4-train.jsonl", 'w', encoding='utf-8') as f:
     f.write(json.dumps(output_data, ensure_ascii=False) + '\n')

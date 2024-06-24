@@ -9,7 +9,7 @@ os.environ['WANDB_DISABLED'] = 'true'  # 禁用 wandb，也可以不用这一条
 from datasets import load_dataset
 from transformers import AutoConfig, AutoTokenizer, AutoModelForCausalLM, DataCollatorForLanguageModeling, \
     TrainingArguments, Trainer
-from utils import print_model_parameters, kaiming_initialization, process_func
+from utils.utils import print_model_parameters, kaiming_initialization, process_func
 
 
 def mini_model():
@@ -18,7 +18,7 @@ def mini_model():
     :return:
     """
     hidden_size = 256
-    # 中间层取 8/3 倍，按 128 向上取整 FFN维度
+    # 中间层取 8/3 倍，按 128 向上取整 FFN维度,FFN的维度
     intermediate_size = (int(hidden_size * 8 / 3 / 128) + 1) * 128
 
     # 只改动我们需要调整的参数，其余保持不变
@@ -70,7 +70,7 @@ def mini_tokenizer():
     """
     if tokenizer_kind == "llama2":
         tokenizer = AutoTokenizer.from_pretrained(
-            "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/Llama-2-7b-hf/")
+            "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/weights/hf_tokenizer/Llama-2-7b-hf/")
 
         """
         LlamaTokenizerFast(name_or_path='NousResearch/Llama-2-7b-hf', vocab_size=32000, model_max_length=1000000000000000019884624838656, is_fast=True, padding_side='left', truncation_side='right', special_tokens={'bos_token': '<s>', 'eos_token': '</s>', 'unk_token': '<unk>', 'pad_token': '<unk>'}, clean_up_tokenization_spaces=False),  added_tokens_decoder={
@@ -111,10 +111,12 @@ def inference(
 def mini_dataset(tokenizer):
     if dataset == "TinyStoriesV2":
         # 应用全部训练集，约 2.7 M,这里可以调整比例，我只用了 10%，约 270 K
-        ds_train = load_dataset("/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/TinyStoriesV2/",
-                                split='train[:10%]')
-        ds_val = load_dataset("/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/TinyStoriesV2/",
-                              split='validation')
+        ds_train = load_dataset(
+            "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/data/TinyStoriesV2/",
+            split='train[:10%]')
+        ds_val = load_dataset(
+            "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/data/TinyStoriesV2/",
+            split='validation')
         ds_train = ds_train.shuffle()
 
         """
@@ -123,10 +125,12 @@ def mini_dataset(tokenizer):
         """
     elif dataset == "TinyStoriesZh":
         # 应用全部训练集，约 2.7 M,这里可以调整比例，我只用了 10%，约 270 K
-        ds_train = load_dataset("/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/TinyStoriesV2/",
-                                split='train[:10%]')
-        ds_val = load_dataset("/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/TinyStoriesV2/",
-                              split='validation[:-2%]')
+        ds_train = load_dataset(
+            "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/data/TinyStoriesZh/",
+            split='train[:10%]')
+        ds_val = load_dataset(
+            "/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/data/TinyStoriesZh/",
+            split='validation[:-2%]')
         ds_train = ds_train.shuffle()
 
         """
@@ -160,7 +164,8 @@ def mini_dataset(tokenizer):
 
 def mini_training(model, ds_train, ds_val, tokenizer, data_collator):
     training_args = TrainingArguments(
-        output_dir='saves',  # 输出路径，包括模型检查点、中间文件等
+        output_dir="/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/weights/saves",
+        # 输出路径，包括模型检查点、中间文件等
         overwrite_output_dir=True,  # 是否覆写 output_dir
         do_train=True,  # 是否做训练
         do_eval=True,  # 是否做评估
@@ -191,13 +196,14 @@ def mini_training(model, ds_train, ds_val, tokenizer, data_collator):
     # 启动训练
     # 这里只 train 了 2 epochs，loss 收敛到了 1.6 左右
     trainer.train()
-    model.save_pretrained(model_path="/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/saves/")
+    model.save_pretrained(
+        model_path="/home/image_team/image_team_docker_home/lgd/e_commerce_llm/minillama3/weights/saves/")
 
 
 if __name__ == "__main__":
     print_model = True
     tokenizer_kind = "llama2"
-    dataset = "TinyStoriesZh"  # TinyStoriesV2
+    dataset = "TinyStoriesV2"  # TinyStoriesV2
 
     # 模型
     model = mini_model()
